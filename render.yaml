@@ -14,8 +14,14 @@ services:
         generateValue: true      # Render creates a long random secret for you
       - key: MONGODB_URI
         sync: false              # paste your MongoDB Atlas string in the Render dashboard
+      - key: GMAIL_CLIENT_ID
+        sync: false              # Gmail API, for password-reset emails (see README)
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
       - key: BREVO_API_KEY
-        sync: false              # for password-reset emails (see README)
+        sync: false              # optional alternative to Gmail
       - key: MAIL_FROM
         sync: false              # e.g. Auth System <your-verified-sender@gmail.com>
       # APP_URL and TRUST_PROXY are optional on Render (detected automatically).

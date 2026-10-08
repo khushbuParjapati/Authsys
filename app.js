@@ -1,53 +1,131 @@
-const path = require('path');
-const express = require('express');
-const helmet = require('helmet');
-const cookieParser = require('cookie-parser');
-const config = require('./config');
-const authRoutes = require('./routes/authRoutes');
-const { guestOnly, requirePageAuth } = require('./middleware/auth');
-const { apiLimiter } = require('./middleware/rateLimit');
-const requireJson = require('./middleware/requireJson');
-const { notFound, errorHandler } = require('./middleware/errorHandler');
+/* Frontend: only collects form input, calls the API and shows the result.
+ * All validation, hashing, tokens, sessions and redirects-by-permission happen on the server. */
+(() => {
+  'use strict';
 
-const app = express();
-if (config.trustProxy) app.set('trust proxy', config.trustProxy);
-app.disable('x-powered-by');
+  const page = document.body.dataset.page;
+  const $ = (sel) => document.querySelector(sel);
 
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        'upgrade-insecure-requests': config.isProd ? [] : null, // would break http://localhost
-      },
+  function showMessage(type, text) {
+    const el = $('#message');
+    if (!el) return;
+    el.className = `alert ${type}`;
+    el.textContent = text;
+    el.hidden = false;
+  }
+
+  async function api(path, body) {
+    const res = await fetch(`/api/auth${path}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      credentials: 'same-origin',
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* non-JSON response */ }
+    if (!res.ok) {
+      const err = new Error(data.message || 'Something went wrong.');
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  // Wires a form: runs `action`, shows errors, disables the button while waiting.
+  function handleForm(action) {
+    const form = $('#form');
+    const btn = $('#submit');
+    const label = btn.textContent;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('#message').hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Please wait…';
+      try {
+        await action(form);
+      } catch (err) {
+        showMessage('error', err.message);
+      }
+      btn.disabled = false;
+      btn.textContent = label;
+    });
+  }
+
+  const val = (id) => $(`#${id}`).value;
+
+  // Show / hide password
+  document.querySelectorAll('.toggle-pw').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Hide' : 'Show';
+    });
+  });
+
+  const pages = {
+    register() {
+      handleForm(async () => {
+        await api('/register', {
+          name: val('name'), username: val('username'), email: val('email'),
+          password: val('password'), confirmPassword: val('confirmPassword'),
+        });
+        location.href = '/login?registered=1';
+      });
     },
-  })
-);
-app.use(express.json({ limit: '10kb' }));
-app.use(cookieParser());
 
-// ---- Health check (Render pings this; no auth, no DB) ----
-app.get('/healthz', (req, res) => res.status(200).json({ status: 'ok' }));
+    login() {
+      const q = new URLSearchParams(location.search);
+      if (q.has('registered')) showMessage('success', 'Account created! You can log in now.');
+      if (q.has('reset')) showMessage('success', 'Password updated. Log in with your new password.');
+      if (q.has('loggedout')) showMessage('info', 'You have been logged out.');
+      if (q.has('expired')) showMessage('info', 'Please log in to continue.');
 
-// ---- Pages (HTML lives in /views; access rules are enforced here, on the server) ----
-const view = (name) => (req, res) => {
-  res.set('Cache-Control', 'no-store'); // back button must not show a cached dashboard after logout
-  res.sendFile(path.join(__dirname, 'views', `${name}.html`));
-};
-app.get('/', guestOnly, view('index'));
-app.get('/login', guestOnly, view('login'));
-app.get('/register', guestOnly, view('register'));
-app.get('/forgot', guestOnly, view('forgot'));
-app.get('/reset', view('reset'));
-app.get('/dashboard', requirePageAuth, view('dashboard'));
+      handleForm(async () => {
+        await api('/login', { identifier: val('identifier'), password: val('password'), remember: $('#remember').checked });
+        location.href = '/dashboard';
+      });
+    },
 
-// ---- API ----
-app.use('/api/auth', apiLimiter, requireJson, authRoutes);
+    forgot() {
+      handleForm(async (form) => {
+        const { message } = await api('/forgot', { identifier: val('identifier') });
+        showMessage('success', message);
+        form.reset();
+      });
+    },
 
-// ---- Static assets (css/js only) ----
-app.use(express.static(path.join(__dirname, 'public')));
+    reset() {
+      const token = new URLSearchParams(location.search).get('token') || '';
+      if (!token) {
+        showMessage('error', 'Reset link is missing or invalid. Request a new one.');
+        $('#form').hidden = true;
+        return;
+      }
+      handleForm(async () => {
+        await api('/reset', { token, password: val('password'), confirmPassword: val('confirmPassword') });
+        location.href = '/login?reset=1';
+      });
+    },
 
-app.use(notFound);
-app.use(errorHandler);
+    async dashboard() {
+      try {
+        const { user } = await api('/me');
+        $('#welcome').textContent = `Welcome, ${user.name.split(' ')[0]}!`;
+        $('#p-name').textContent = user.name;
+        $('#p-username').textContent = `@${user.username}`;
+        $('#p-email').textContent = user.email;
+        $('#p-joined').textContent = new Date(user.createdAt).toLocaleDateString();
+        $('#dash').hidden = false;
+      } catch {
+        return location.replace('/login?expired=1');
+      }
+      $('#logout').addEventListener('click', async () => {
+        try { await api('/logout', {}); } catch { /* cookie may already be invalid */ }
+        location.replace('/login?loggedout=1');
+      });
+    },
+  };
 
-module.exports = app;
+  if (pages[page]) pages[page]();
+})();

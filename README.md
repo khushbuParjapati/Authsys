@@ -84,10 +84,18 @@ Frontend and backend are ONE Node service (Express serves the HTML/CSS/JS), so y
 `PORT`, `TRUST_PROXY` and `APP_URL` are detected automatically on Render. Set `APP_URL` only for a custom domain.
 
 **4. Reset emails on Render**
-Render's free plan blocks SMTP ports (25/465/587), so Gmail/SMTP will time out. This project can send
-through Brevo's HTTPS API instead: create a free Brevo account, verify a sender email, create an API key
-(SMTP & API -> API keys), then set `BREVO_API_KEY` and `MAIL_FROM="Auth System <your-verified-email>"`.
-On a paid Render plan you can use `SMTP_*` instead. In production, reset links are never printed to logs.
+Render's free plan blocks SMTP ports (25/465/587), so the app sends mail over HTTPS instead. Priority order:
+Gmail API -> Brevo API -> SMTP -> (dev only) console.
+
+*Gmail API (sends from your own Gmail, no domain needed):*
+1. Google Cloud Console -> create a project -> enable **Gmail API**.
+2. *Google Auth Platform* (old name: OAuth consent screen): User type **External**, add your Gmail as test user, add scope `https://www.googleapis.com/auth/gmail.send`, then **Publish app** (set to *In production*). If it stays in *Testing*, the refresh token expires after 7 days.
+3. *Clients* -> Create client -> **Web application** -> Authorized redirect URI: `https://developers.google.com/oauthplayground` -> copy Client ID + Client Secret.
+4. Open https://developers.google.com/oauthplayground -> gear icon -> tick **Use your own OAuth credentials** -> paste ID/Secret. In Step 1 enter the scope `https://www.googleapis.com/auth/gmail.send` -> Authorize -> sign in (click *Advanced -> Go to app (unsafe)* on the warning) -> Step 2 **Exchange authorization code for tokens** -> copy the **Refresh token**.
+5. Set in Render: `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, and `MAIL_FROM="Auth System <your-gmail@gmail.com>"` (must be that same Gmail).
+
+*Brevo API (alternative):* works reliably only with your own verified domain; `BREVO_API_KEY` + `MAIL_FROM`.
+In production, reset links are never printed to logs.
 
 **Notes**
 - Free Render services sleep after ~15 idle minutes; the first request afterwards can take up to a minute.

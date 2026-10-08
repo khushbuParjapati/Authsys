@@ -36,8 +36,13 @@ module.exports = {
   maxLoginAttempts: num(env.MAX_LOGIN_ATTEMPTS, 5),
   lockMs: num(env.LOCK_MINUTES, 15) * 60 * 1000,
 
-  // HTTPS email API (works on Render free plan, where SMTP ports are blocked)
+  // HTTPS email APIs (work on Render free plan, where SMTP ports are blocked)
   brevoApiKey: env.BREVO_API_KEY,
+  gmail: {
+    clientId: env.GMAIL_CLIENT_ID,
+    clientSecret: env.GMAIL_CLIENT_SECRET,
+    refreshToken: env.GMAIL_REFRESH_TOKEN,
+  },
 
   smtp: {
     host: env.SMTP_HOST,

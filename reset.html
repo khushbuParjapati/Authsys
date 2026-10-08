@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reset password · Auth System</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body data-page="reset">
+  <main class="card">
+    <div class="logo">🔑</div>
+    <h1>Set a new password</h1>
+    <p class="sub">Choose a strong password you haven't used before.</p>
+    <div id="message" class="alert" hidden role="alert"></div>
+    <form id="form" novalidate>
+      <label for="password">New password</label>
+      <div class="pw-wrap">
+        <input type="password" id="password" autocomplete="new-password" required />
+        <button type="button" class="toggle-pw" data-target="password">Show</button>
+      </div>
+
+      <label for="confirmPassword">Confirm new password</label>
+      <input type="password" id="confirmPassword" autocomplete="new-password" required />
+
+      <button class="btn" type="submit" id="submit">Reset password</button>
+    </form>
+    <p class="footer-text"><a href="/login">Back to log in</a></p>
+  </main>
+  <script src="/js/app.js"></script>
+</body>
+</html>

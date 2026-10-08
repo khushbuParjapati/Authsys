@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forgot password · Auth System</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body data-page="forgot">
+  <main class="card">
+    <div class="logo">🔑</div>
+    <h1>Forgot password?</h1>
+    <p class="sub">Enter your email or username and we'll send you a reset link.</p>
+    <div id="message" class="alert" hidden role="alert"></div>
+    <form id="form" novalidate>
+      <label for="identifier">Email or username</label>
+      <input type="text" id="identifier" autocomplete="username" required />
+      <button class="btn" type="submit" id="submit">Send reset link</button>
+    </form>
+    <p class="footer-text"><a href="/login">Back to log in</a></p>
+  </main>
+  <script src="/js/app.js"></script>
+</body>
+</html>
